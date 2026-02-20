@@ -1,3 +1,4 @@
+use alloc::rc::Rc;
 use psp::sys::*;
 use psp_file_formats::model::{GuStateFlags, Material, Mesh, Sampler, Texture, TextureBind};
 
@@ -10,16 +11,16 @@ pub trait Appliable {
 }
 
 pub struct ModelInstance {
-    model: psp_file_formats::model::Model,
+    model: Rc<psp_file_formats::model::Model>,
     pub position: [f32; 3],
     pub rotation: [f32; 3],
     pub scale: [f32; 3],
 }
 
-impl From<psp_file_formats::model::Model> for ModelInstance {
-    fn from(model: psp_file_formats::model::Model) -> Self {
+impl From<Rc<psp_file_formats::model::Model>> for ModelInstance {
+    fn from (model: Rc<psp_file_formats::model::Model>) -> Self {
         Self {
-            model,
+            model: model.clone(),
             position: [0.0; 3],
             rotation: [0.0; 3],
             scale: [1.0; 3],
@@ -48,14 +49,14 @@ impl Drawable for ModelInstance {
             });
         }
 
-        for mesh in &self.model.meshes {
-            if let Some(material) = mesh.material.and_then(|i| self.model.materials.get(i)) {
+        for mesh in &self.model.as_ref().meshes {
+            if let Some(material) = mesh.material.and_then(|i| self.model.as_ref().materials.get(i)) {
                 let (texture, sampler) = match material.texture_bind {
                     TextureBind::None => (None, None),
                     TextureBind::Texture(texture) => (self.model.textures.get(texture), None),
                     TextureBind::TextureAndSampler(texture, sampler) => (
-                        self.model.textures.get(texture),
-                        self.model.samplers.get(sampler),
+                        self.model.as_ref().textures.get(texture),
+                        self.model.as_ref().samplers.get(sampler),
                     ),
                 };
                 if let Some(texture) = texture {

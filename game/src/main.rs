@@ -3,6 +3,7 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
+use alloc::rc::Rc;
 
 use core::mem::MaybeUninit;
 use uninit::uninit_array;
@@ -119,36 +120,84 @@ impl Gizmo {
     }
 }
 
-struct World {
-    models: Vec<ModelInstance>,
+struct World
+{
+    models: Vec<Rc<psp_file_formats::Model>>,
+    instances: Vec<ModelInstance>,
     gizmo: Option<Gizmo>,
     timer: Timer,
 }
 
 impl World {
     fn new() -> Self {
+        let mut models = alloc::vec::Vec::<Rc<psp_file_formats::Model>>::new();
+        let instances = alloc::vec::Vec::<ModelInstance>::new();
         let model = {
-            let bytes = include_bytes!("../res/BoxVertexColors.psp");
+            let bytes = include_bytes!("../res/ferris3d_v1.0.psp");
             let model: psp_file_formats::Model = postcard::from_bytes(bytes).unwrap();
-            let mut instance = ModelInstance::from(model);
-            instance.rotation = [45_f32.to_radians(), 15_f32.to_radians(), 0.0];
-            instance.position = [0.0, 0.0, -5.0];
-            instance.scale = [1.0; 3];
-            instance
+            model
         };
+        models.push(Rc::new(model));
+
 
         Self {
-            models: alloc::vec![model],
+            models,
+            instances,
             gizmo: Gizmo::new().ok(),
             timer: Timer::new(),
         }
     }
 
-    fn draw(&mut self) {
+    fn setup(&mut self)
+    {
+        let mut instance1 = ModelInstance::from(self.models[0].clone());
+        instance1.position = [0.0,-2.0, -1.0];
+        self.instances.push(instance1);
+        let mut instance2 = ModelInstance::from(self.models[0].clone());
+        instance2.position=[-2.0, -2.0, -1.0];
+        self.instances.push(instance2);
+        let mut instance3 = ModelInstance::from(self.models[0].clone());
+        instance3.position=[2.0, -2.0, -1.0];
+        self.instances.push(instance3);
+
+        let mut instance4 = ModelInstance::from(self.models[0].clone());
+        instance4.position = [0.0,-2.0, -2.0];
+        self.instances.push(instance4);
+        let mut instance5 = ModelInstance::from(self.models[0].clone());
+        instance5.position=[-2.0, -2.0, -2.0];
+        self.instances.push(instance5);
+        let mut instance6 = ModelInstance::from(self.models[0].clone());
+        instance6.position=[2.0, -2.0, -2.0];
+        self.instances.push(instance6);
+
+        let mut instance7 = ModelInstance::from(self.models[0].clone());
+        instance7.position = [0.0, -2.0, -3.0];
+        self.instances.push(instance7);
+        let mut instance8 = ModelInstance::from(self.models[0].clone());
+        instance8.position=[-2.0, -2.0, -3.0];
+        self.instances.push(instance8);
+        let mut instance9 = ModelInstance::from(self.models[0].clone());
+        instance9.position=[2.0, -2.0, -3.0];
+        self.instances.push(instance9);
+
+        let mut instance10 = ModelInstance::from(self.models[0].clone());
+        instance10.position = [0.0, -2.0, -4.0];
+        self.instances.push(instance10);
+        let mut instance11 = ModelInstance::from(self.models[0].clone());
+        instance11.position=[-2.0, -2.0, -4.0];
+        self.instances.push(instance11);
+        let mut instance12 = ModelInstance::from(self.models[0].clone());
+        instance12.position=[2.0, -2.0, -4.0];
+        self.instances.push(instance12);
+    }
+
+    fn draw(&mut self) 
+    {
         let delta = self.timer.delta_f32();
-        for model in &mut self.models {
-            model.rotation[1] += delta * 45_f32.to_radians();
-            model.draw();
+        for instance in &mut self.instances {
+            let y_rot = delta;
+            instance.rotation = [0.0, instance.rotation[1] + y_rot, 0.0];
+            instance.draw();
         }
         if let Some(gizmo) = &mut self.gizmo {
             gizmo.draw(delta);
@@ -170,6 +219,7 @@ fn psp_main() {
     init_graphics(&mut buffers);
 
     let mut world = World::new();
+    world.setup();
 
     loop {
         draw_frame(&mut buffers, &mut world);
@@ -178,7 +228,8 @@ fn psp_main() {
     // sceGuTerm();
 }
 
-fn draw_frame(buffer: &mut GraphicsBuffer, world: &mut World) {
+fn draw_frame(buffer: &mut GraphicsBuffer, world: &mut World) 
+{
     unsafe {
         sceGuStart(
             GuContextType::Direct,
@@ -209,6 +260,9 @@ fn init_graphics(buffer: &mut GraphicsBuffer) {
         sceGumMatrixMode(MatrixMode::View);
         sceGumLoadIdentity();
 
+        // rotate camera 45 degrees
+        sceGumRotateX(45.0f32.to_radians());
+        
         sceGumMatrixMode(MatrixMode::Model);
         sceGumLoadIdentity();
 
